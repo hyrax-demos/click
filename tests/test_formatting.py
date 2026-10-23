@@ -603,6 +603,59 @@ def test_help_formatter_write_usage_without_args_styled_prefix():
     assert "\x1b[" in rendered
 
 
+_HYPHENATED_OPTIONS = [
+    "[--max-retry-count]",
+    "[--min-retry-delay]",
+    "[--connect-timeout]",
+    "[--read-timeout]",
+    "[--pool-size]",
+    "[--log-level-name]",
+    "[--output-file-path]",
+    "[--retry-backoff-factor]",
+    "[--dry-run-mode]",
+    "[--config-file-name]",
+]
+
+
+def test_write_usage_does_not_break_options_at_hyphens():
+    """Ten hyphenated options wrapped at width 65 force several line
+    breaks. Every line break falls between options, and each option
+    appears whole on exactly one line.
+    """
+    f = click.HelpFormatter(width=65)
+    f.write_usage("cli", " ".join(_HYPHENATED_OPTIONS))
+    lines = f.getvalue().splitlines()
+
+    assert lines == [
+        "Usage: cli [--max-retry-count] [--min-retry-delay]",
+        "           [--connect-timeout] [--read-timeout] [--pool-size]",
+        "           [--log-level-name] [--output-file-path]",
+        "           [--retry-backoff-factor] [--dry-run-mode]",
+        "           [--config-file-name]",
+    ]
+    assert [tok for line in lines for tok in line.split()][2:] == _HYPHENATED_OPTIONS
+
+
+@pytest.mark.parametrize(
+    "prog",
+    [
+        pytest.param("cli", id="args-beside-prog"),
+        pytest.param("a-very-very-very-long-program-name", id="args-below-prog"),
+    ],
+)
+def test_write_usage_keeps_overlong_option_whole(prog):
+    """An option name longer than the space left for arguments is kept
+    whole on its own line instead of being cut to fit the width.
+    """
+    option = "[--an-extremely-long-option-name-that-cannot-fit-the-width]"
+    f = click.HelpFormatter(width=50)
+    f.write_usage(prog, f"[OPTIONS] {option} ARG")
+    lines = f.getvalue().splitlines()
+
+    assert option in [line.strip() for line in lines]
+    assert lines[-1].strip() == "ARG"
+
+
 @pytest.mark.parametrize(
     ("command_kwargs", "expected_usage_line"),
     [
