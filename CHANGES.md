@@ -46,6 +46,9 @@ Unreleased
 - A command's short help no longer stops at an abbreviation such as `vs.` or `e.g.`
   inside the first sentence. A period ends the sentence only when it closes the text
   or the next word does not start in lowercase. {pr}`3865`
+- {meth}`HelpFormatter.write_usage` wraps the usage line only at whitespace, so
+  an option name such as `--max-retry-count` is no longer split at a hyphen or
+  cut when it is longer than the line.
 
 ## Version 8.5.0
 

@@ -107,6 +107,30 @@ def wrap_text(
     return "\n\n".join(rv)
 
 
+def _wrap_usage(
+    args: str, width: int, initial_indent: str, subsequent_indent: str
+) -> str:
+    """Wrap the arguments of a usage line, breaking only at whitespace.
+
+    Unlike :func:`wrap_text`, a token is never split at a hyphen or cut
+    because it is longer than the line, so an option such as
+    ``--max-retry-count`` stays whole. A token wider than the line is
+    placed whole as the only token on its line, which then overflows the
+    width.
+    """
+    from ._textwrap import TextWrapper
+
+    wrapper = TextWrapper(
+        width,
+        initial_indent=initial_indent,
+        subsequent_indent=subsequent_indent,
+        replace_whitespace=False,
+        break_on_hyphens=False,
+        break_long_words=False,
+    )
+    return wrapper.fill(args.expandtabs())
+
+
 class HelpFormatter:
     """This class helps with formatting text-based help pages.  It's
     usually just needed for very special internal cases, but it's also
@@ -158,6 +182,9 @@ class HelpFormatter:
     def write_usage(self, prog: str, args: str = "", prefix: str | None = None) -> None:
         """Writes a usage line into the buffer.
 
+        Long usage lines wrap only at whitespace, so an option name is
+        never split at a hyphen or cut in the middle.
+
         :param prog: the program name.
         :param args: whitespace separated list of arguments.
         :param prefix: The prefix for the first line. Defaults to
@@ -170,7 +197,7 @@ class HelpFormatter:
         text_width = self.width - self.current_indent
 
         if not args:
-            # Without args, the prefix's trailing space and the wrap_text
+            # Without args, the prefix's trailing space and the _wrap_usage
             # call that would normally place args on the line are both
             # unnecessary. Emit just the prefix line.
             self.write(usage_prefix.rstrip(" "))
@@ -181,7 +208,7 @@ class HelpFormatter:
             # The arguments will fit to the right of the prefix.
             indent = " " * term_len(usage_prefix)
             self.write(
-                wrap_text(
+                _wrap_usage(
                     args,
                     text_width,
                     initial_indent=usage_prefix,
@@ -194,7 +221,7 @@ class HelpFormatter:
             self.write("\n")
             indent = " " * (max(self.current_indent, term_len(prefix)) + 4)
             self.write(
-                wrap_text(
+                _wrap_usage(
                     args, text_width, initial_indent=indent, subsequent_indent=indent
                 )
             )

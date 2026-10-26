@@ -603,6 +603,52 @@ def test_help_formatter_write_usage_without_args_styled_prefix():
     assert "\x1b[" in rendered
 
 
+def test_help_formatter_write_usage_does_not_break_at_hyphen():
+    """Ten hyphenated options at width 65 wrap between options, never
+    inside one: ``[--read-timeout]`` falls at the width limit and moves to
+    the next line whole instead of being split after ``--read-``.
+    """
+    options = [
+        "--max-retry-count",
+        "--connect-timeout",
+        "--read-timeout",
+        "--log-level",
+        "--config-file",
+        "--output-dir",
+        "--dry-run",
+        "--no-color",
+        "--cache-dir",
+        "--user-agent",
+    ]
+    f = click.HelpFormatter(width=65)
+    f.write_usage("cli", " ".join(f"[{opt}]" for opt in options))
+    assert f.getvalue() == (
+        "Usage: cli [--max-retry-count] [--connect-timeout]\n"
+        "           [--read-timeout] [--log-level] [--config-file]\n"
+        "           [--output-dir] [--dry-run] [--no-color] [--cache-dir]\n"
+        "           [--user-agent]\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        pytest.param("[--an-option-name-that-is-longer-than-the-line]", id="hyphens"),
+        pytest.param("[--anoptionnamethatismuchlongerthantheline]", id="no-hyphens"),
+    ],
+)
+def test_help_formatter_write_usage_keeps_long_option_whole(option):
+    """An option token wider than the 39 columns left for arguments at
+    width 50 is put on a line of its own whole, not split at a hyphen or
+    cut mid-word.
+    """
+    f = click.HelpFormatter(width=50)
+    f.write_usage("cli", f"[OPTIONS] {option} ARG")
+    assert f.getvalue() == (
+        f"Usage: cli [OPTIONS]\n           {option}\n           ARG\n"
+    )
+
+
 @pytest.mark.parametrize(
     ("command_kwargs", "expected_usage_line"),
     [
