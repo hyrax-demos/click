@@ -630,3 +630,79 @@ def test_command_write_usage_no_args(runner, command_kwargs, expected_usage_line
     cli = click.Command("cli", **command_kwargs)
     result = runner.invoke(cli, ["--help"])
     assert result.output.splitlines()[0] == expected_usage_line
+
+
+# Ten hyphenated options whose usage text needs several lines at width 65.
+_HYPHENATED_USAGE_ARGS = " ".join(
+    f"[--{name} VALUE]"
+    for name in (
+        "max-retry-count",
+        "connect-timeout",
+        "read-timeout",
+        "log-level",
+        "output-format",
+        "dry-run",
+        "batch-size",
+        "cache-dir",
+        "retry-backoff",
+        "no-color",
+    )
+)
+
+
+@pytest.mark.parametrize(
+    ("prog", "expected"),
+    [
+        # Short program name: the arguments wrap to the right of the prefix.
+        pytest.param(
+            "cli",
+            "Usage: cli [--max-retry-count VALUE] [--connect-timeout VALUE]\n"
+            "           [--read-timeout VALUE] [--log-level VALUE]\n"
+            "           [--output-format VALUE] [--dry-run VALUE]\n"
+            "           [--batch-size VALUE] [--cache-dir VALUE]\n"
+            "           [--retry-backoff VALUE] [--no-color VALUE]\n",
+            id="args-beside-prefix",
+        ),
+        # Program name too long to share a line: the arguments move below.
+        pytest.param(
+            "a-program-name-so-long-that-the-arguments-move-down",
+            "Usage: a-program-name-so-long-that-the-arguments-move-down \n"
+            "           [--max-retry-count VALUE] [--connect-timeout VALUE]\n"
+            "           [--read-timeout VALUE] [--log-level VALUE]\n"
+            "           [--output-format VALUE] [--dry-run VALUE]\n"
+            "           [--batch-size VALUE] [--cache-dir VALUE]\n"
+            "           [--retry-backoff VALUE] [--no-color VALUE]\n",
+            id="args-below-prefix",
+        ),
+    ],
+)
+def test_write_usage_does_not_break_options_at_hyphen(prog, expected):
+    """Ten hyphenated options rendered at width 65 need several usage
+    lines; each line breaks between options, never inside an option name
+    such as ``--output-format``.
+    """
+    f = click.HelpFormatter(width=65)
+    f.write_usage(prog, _HYPHENATED_USAGE_ARGS)
+    rendered = f.getvalue()
+    assert rendered == expected
+    assert all(len(line) <= 65 for line in rendered.splitlines())
+
+
+def test_command_usage_does_not_break_options_at_hyphen(runner):
+    """End-to-end: a command whose usage holds ten hyphenated options,
+    rendered at width 65, keeps every option name whole in ``--help``.
+    """
+    cli = click.Command(
+        "cli",
+        options_metavar=_HYPHENATED_USAGE_ARGS,
+        context_settings={"terminal_width": 65},
+    )
+    result = runner.invoke(cli, ["--help"])
+    usage = result.output.split("\n\n")[0]
+    assert usage == (
+        "Usage: cli [--max-retry-count VALUE] [--connect-timeout VALUE]\n"
+        "           [--read-timeout VALUE] [--log-level VALUE]\n"
+        "           [--output-format VALUE] [--dry-run VALUE]\n"
+        "           [--batch-size VALUE] [--cache-dir VALUE]\n"
+        "           [--retry-backoff VALUE] [--no-color VALUE]"
+    )
