@@ -603,6 +603,67 @@ def test_help_formatter_write_usage_without_args_styled_prefix():
     assert "\x1b[" in rendered
 
 
+_HYPHENATED_USAGE_OPTIONS = [
+    "--max-retry-count",
+    "--retry-backoff-factor",
+    "--connect-timeout-seconds",
+    "--read-timeout-seconds",
+    "--pool-max-size",
+    "--dns-cache-ttl",
+    "--keep-alive-interval",
+    "--proxy-auth-token",
+    "--tls-ca-bundle",
+    "--log-output-format",
+]
+
+
+def test_write_usage_wraps_only_at_whitespace():
+    """Ten hyphenated options after prog ``cli`` at width 65 overflow the
+    first line. The usage line wraps at the spaces between them, never at a
+    hyphen inside an option name.
+    """
+    formatter = click.HelpFormatter(width=65)
+    formatter.write_usage("cli", " ".join(_HYPHENATED_USAGE_OPTIONS))
+    rendered = formatter.getvalue()
+
+    assert rendered == (
+        "Usage: cli --max-retry-count --retry-backoff-factor\n"
+        "           --connect-timeout-seconds --read-timeout-seconds\n"
+        "           --pool-max-size --dns-cache-ttl --keep-alive-interval\n"
+        "           --proxy-auth-token --tls-ca-bundle --log-output-format\n"
+    )
+
+    lines = rendered.splitlines()
+    assert all(len(line) <= 65 for line in lines)
+    assert not any(line.endswith("-") for line in lines)
+    for name in _HYPHENATED_USAGE_OPTIONS:
+        assert any(name in line.split() for line in lines), name
+
+
+def test_write_usage_narrow_prefix_wraps_only_at_whitespace():
+    """A prog long enough that the arguments go below the prefix line still
+    wraps only at whitespace. An option longer than the whole line is left
+    whole and overflows instead of being cut.
+    """
+    prog = "a-very-long-program-name-that-takes-up-the-usage-line"
+    too_long = "--" + "-".join(["very-long-option-name"] * 4)
+    options = [*_HYPHENATED_USAGE_OPTIONS, too_long]
+    width = 65
+    assert len(f"Usage: {prog} ") + 20 > width
+    assert len(too_long) > width
+
+    formatter = click.HelpFormatter(width=width)
+    formatter.write_usage(prog, " ".join(options))
+    lines = formatter.getvalue().splitlines()
+
+    assert lines[0].rstrip() == f"Usage: {prog}"
+    words = [word for line in lines[1:] for word in line.split()]
+    assert words == options
+    assert not any(line.endswith("-") for line in lines)
+    for name in options:
+        assert any(name in line.split() for line in lines[1:]), name
+
+
 @pytest.mark.parametrize(
     ("command_kwargs", "expected_usage_line"),
     [

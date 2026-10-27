@@ -46,6 +46,8 @@ Unreleased
 - A command's short help no longer stops at an abbreviation such as `vs.` or `e.g.`
   inside the first sentence. A period ends the sentence only when it closes the text
   or the next word does not start in lowercase. {pr}`3865`
+- `HelpFormatter.write_usage` wraps usage lines only at whitespace, so hyphenated
+  option names are no longer split across lines.
 
 ## Version 8.5.0
 
