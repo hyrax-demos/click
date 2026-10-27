@@ -590,6 +590,45 @@ def test_help_formatter_write_usage(
     assert f.getvalue() == expected
 
 
+def test_help_formatter_write_usage_does_not_break_on_hyphens():
+    """Ten hyphenated flags rendered at width 65 wrap at whitespace only.
+    Before, the first line ended in ``[--log-`` and ``level]`` started the
+    second line.
+    """
+    names = [
+        "--verbose",
+        "--dry-run",
+        "--max-retry-count",
+        "--log-level",
+        "--config-file",
+        "--output-dir",
+        "--no-color",
+        "--timeout",
+        "--batch-size",
+        "--force",
+    ]
+    f = click.HelpFormatter(width=65)
+    f.write_usage("cli", " ".join(f"[{name}]" for name in names))
+    assert f.getvalue() == (
+        "Usage: cli [--verbose] [--dry-run] [--max-retry-count]\n"
+        "           [--log-level] [--config-file] [--output-dir]\n"
+        "           [--no-color] [--timeout] [--batch-size] [--force]\n"
+    )
+
+
+def test_help_formatter_write_usage_keeps_long_option_whole():
+    """An option longer than the space left for arguments goes on its own
+    line whole instead of being cut to fit the width.
+    """
+    f = click.HelpFormatter(width=30)
+    f.write_usage("a-very-long-program-name", "[--some-very-long-option-name] [-v]")
+    assert f.getvalue() == (
+        "Usage: a-very-long-program-name \n"
+        "           [--some-very-long-option-name]\n"
+        "           [-v]\n"
+    )
+
+
 def test_help_formatter_write_usage_without_args_styled_prefix():
     """A downstream-styled prefix is preserved when ``args`` is empty:
     the ANSI escape sequences survive, only the trailing separator is
