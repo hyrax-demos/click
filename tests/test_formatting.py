@@ -630,3 +630,27 @@ def test_command_write_usage_no_args(runner, command_kwargs, expected_usage_line
     cli = click.Command("cli", **command_kwargs)
     result = runner.invoke(cli, ["--help"])
     assert result.output.splitlines()[0] == expected_usage_line
+
+
+def test_write_usage_wraps_only_at_whitespace():
+    """Ten options named ``--max-retry-count0`` to ``--max-retry-count9``,
+    each with an ``INTEGER`` metavar, rendered at width 65: the usage wraps
+    onto several lines, and every break falls between words, so no option
+    name is split at one of its hyphens.
+    """
+    args = " ".join(f"[--max-retry-count{i} INTEGER]" for i in range(10))
+    formatter = click.HelpFormatter(width=65)
+    formatter.write_usage("cli", args)
+    lines = formatter.getvalue().splitlines()
+
+    assert lines == [
+        "Usage: cli [--max-retry-count0 INTEGER] [--max-retry-count1",
+        "           INTEGER] [--max-retry-count2 INTEGER]",
+        "           [--max-retry-count3 INTEGER] [--max-retry-count4",
+        "           INTEGER] [--max-retry-count5 INTEGER]",
+        "           [--max-retry-count6 INTEGER] [--max-retry-count7",
+        "           INTEGER] [--max-retry-count8 INTEGER]",
+        "           [--max-retry-count9 INTEGER]",
+    ]
+    assert " ".join(lines).split() == ["Usage:", "cli", *args.split()]
+    assert all(len(line) <= 65 for line in lines)
