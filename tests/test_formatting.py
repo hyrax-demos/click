@@ -590,6 +590,63 @@ def test_help_formatter_write_usage(
     assert f.getvalue() == expected
 
 
+_HYPHENATED_USAGE_PIECES = [
+    "[--max-retry-count N]",
+    "[--connect-timeout-seconds SECS]",
+    "[--output-file-path PATH]",
+    "[--log-level-name LEVEL]",
+    "[--dry-run-mode]",
+    "[--cache-dir-path DIR]",
+    "[--worker-pool-size N]",
+    "[--read-buffer-bytes N]",
+    "[--skip-tls-verify]",
+    "[--config-file-name FILE]",
+]
+
+
+@pytest.mark.parametrize(
+    "prog",
+    [
+        pytest.param("cli", id="same-line"),
+        # Long enough that ``text_width < term_len(usage_prefix) + 20``, so
+        # the args are written on the lines after the prefix.
+        pytest.param("a-very-long-program-name-for-testing-x", id="next-line"),
+    ],
+)
+def test_write_usage_does_not_break_on_hyphens(prog):
+    """Ten hyphenated options wrapped at width 65 stay whole: no line ends
+    in a hyphen, and each ``--name`` sits on a single line.
+    """
+    f = click.HelpFormatter(width=65)
+    f.write_usage(prog, " ".join(_HYPHENATED_USAGE_PIECES))
+    lines = f.getvalue().splitlines()
+    assert len(lines) > 2
+
+    for line in lines:
+        assert not line.rstrip().endswith("-"), line
+
+    for piece in _HYPHENATED_USAGE_PIECES:
+        name = piece.strip("[]").split()[0]
+        assert any(name in line for line in lines), name
+
+
+def test_write_usage_keeps_overlong_token_whole():
+    """A hyphen-free token wider than the formatter width overflows the
+    line instead of being cut.
+    """
+    token = "x" * 40
+    f = click.HelpFormatter(width=20)
+    f.write_usage("cli", token)
+    lines = f.getvalue().splitlines()
+    assert any(token in line for line in lines), lines
+
+
+def test_wrap_text_breaks_on_hyphens_by_default():
+    """``wrap_text`` with default arguments still splits hyphenated words."""
+    rv = click.formatting.wrap_text("aaaa-bbbb-cccc-dddd", width=10)
+    assert rv.splitlines()[0].endswith("-")
+
+
 def test_help_formatter_write_usage_without_args_styled_prefix():
     """A downstream-styled prefix is preserved when ``args`` is empty:
     the ANSI escape sequences survive, only the trailing separator is

@@ -19,6 +19,8 @@ Unreleased
   for options, so its value changes from `my_option` to `--my-option`. Click no
   longer reads it, and a subclass that overrides it gets a warning when the class
   is defined. {pr}`3877`
+- Fix {meth}`HelpFormatter.write_usage` splitting option names at hyphens; usage
+  lines now wrap only at whitespace.
 
 ## Version 8.5.1
 
