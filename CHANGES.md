@@ -19,6 +19,10 @@ Unreleased
   for options, so its value changes from `my_option` to `--my-option`. Click no
   longer reads it, and a subclass that overrides it gets a warning when the class
   is defined. {pr}`3877`
+- {meth}`HelpFormatter.write_usage` wraps the usage line only at whitespace, so
+  an option name such as `--max-retry-count` is no longer split at a hyphen or
+  cut to fit the width. {func}`~click.formatting.wrap_text` gains
+  `break_on_hyphens` and `break_long_words` parameters for this.
 
 ## Version 8.5.1
 
