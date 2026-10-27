@@ -590,6 +590,48 @@ def test_help_formatter_write_usage(
     assert f.getvalue() == expected
 
 
+def test_help_formatter_write_usage_keeps_hyphenated_options_whole():
+    """Ten hyphenated options in a width-65 formatter wrap at the spaces
+    between options. ``--retry-backoff-factor`` lands where the line limit
+    falls inside it, and it moves to the next line whole instead of being
+    split after ``--retry-``.
+    """
+    names = [
+        "--host",
+        "--port",
+        "--max-retry-count",
+        "--timeout",
+        "--log-level",
+        "--dry-run",
+        "--config-file",
+        "--retry-backoff-factor",
+        "--verbose",
+        "--output-format",
+    ]
+    f = click.HelpFormatter(width=65)
+    f.write_usage("cli", " ".join(f"[{name}]" for name in names))
+    lines = f.getvalue().splitlines()
+    assert lines == [
+        "Usage: cli [--host] [--port] [--max-retry-count] [--timeout]",
+        "           [--log-level] [--dry-run] [--config-file]",
+        "           [--retry-backoff-factor] [--verbose] [--output-format]",
+    ]
+    assert all(len(line) <= 65 for line in lines)
+
+
+def test_help_formatter_write_usage_does_not_cut_long_option():
+    """An option name longer than the space left for arguments is put on
+    its own line uncut, even though that line exceeds the width.
+    """
+    f = click.HelpFormatter(width=30)
+    f.write_usage("cli", "[--a-very-very-long-option-name-here] X")
+    assert f.getvalue().splitlines() == [
+        "Usage: cli ",
+        "           [--a-very-very-long-option-name-here]",
+        "           X",
+    ]
+
+
 def test_help_formatter_write_usage_without_args_styled_prefix():
     """A downstream-styled prefix is preserved when ``args`` is empty:
     the ANSI escape sequences survive, only the trailing separator is
