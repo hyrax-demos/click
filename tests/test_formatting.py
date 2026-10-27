@@ -590,6 +590,50 @@ def test_help_formatter_write_usage(
     assert f.getvalue() == expected
 
 
+_HYPHENATED_USAGE_OPTIONS = [
+    "--max-retry-count",
+    "--connect-timeout",
+    "--read-timeout",
+    "--log-level",
+    "--output-dir",
+    "--config-file",
+    "--dry-run",
+    "--no-color",
+    "--batch-size",
+    "--worker-count",
+]
+
+
+def test_write_usage_does_not_break_options_at_hyphens():
+    """Ten bracketed hyphenated options rendered at width 65 wrap only at
+    whitespace: every option name appears whole on a single line.
+    """
+    args = " ".join(f"[{opt}]" for opt in _HYPHENATED_USAGE_OPTIONS)
+    f = click.HelpFormatter(width=65)
+    f.write_usage("cli", args)
+    assert f.getvalue() == (
+        "Usage: cli [--max-retry-count] [--connect-timeout]\n"
+        "           [--read-timeout] [--log-level] [--output-dir]\n"
+        "           [--config-file] [--dry-run] [--no-color]\n"
+        "           [--batch-size] [--worker-count]\n"
+    )
+
+
+def test_write_usage_long_prog_does_not_break_options_at_hyphens():
+    """When the program name is too long to share a line with the
+    arguments, the ten hyphenated options at width 65 still wrap only at
+    whitespace.
+    """
+    args = " ".join(f"[{opt}]" for opt in _HYPHENATED_USAGE_OPTIONS)
+    f = click.HelpFormatter(width=65)
+    f.write_usage("a-very-long-program-name-that-fills-the-line", args)
+    lines = f.getvalue().splitlines()
+    assert lines[0] == "Usage: a-very-long-program-name-that-fills-the-line "
+    tokens = [token for line in lines[1:] for token in line.split()]
+    assert tokens == [f"[{opt}]" for opt in _HYPHENATED_USAGE_OPTIONS]
+    assert all(len(line) <= 65 for line in lines[1:])
+
+
 def test_help_formatter_write_usage_without_args_styled_prefix():
     """A downstream-styled prefix is preserved when ``args`` is empty:
     the ANSI escape sequences survive, only the trailing separator is

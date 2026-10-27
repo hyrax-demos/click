@@ -107,6 +107,28 @@ def wrap_text(
     return "\n\n".join(rv)
 
 
+def _wrap_usage(
+    args: str, width: int, initial_indent: str, subsequent_indent: str
+) -> str:
+    """Wrap usage arguments, breaking lines only at whitespace.
+
+    Unlike :func:`wrap_text`, this never splits a token at a hyphen or in
+    the middle, so option names such as ``--max-retry-count`` stay whole.
+    A token longer than the available width is kept on its own line.
+    """
+    from ._textwrap import TextWrapper
+
+    wrapper = TextWrapper(
+        width,
+        initial_indent=initial_indent,
+        subsequent_indent=subsequent_indent,
+        replace_whitespace=False,
+        break_on_hyphens=False,
+        break_long_words=False,
+    )
+    return wrapper.fill(args.expandtabs())
+
+
 class HelpFormatter:
     """This class helps with formatting text-based help pages.  It's
     usually just needed for very special internal cases, but it's also
@@ -170,7 +192,7 @@ class HelpFormatter:
         text_width = self.width - self.current_indent
 
         if not args:
-            # Without args, the prefix's trailing space and the wrap_text
+            # Without args, the prefix's trailing space and the _wrap_usage
             # call that would normally place args on the line are both
             # unnecessary. Emit just the prefix line.
             self.write(usage_prefix.rstrip(" "))
@@ -181,7 +203,7 @@ class HelpFormatter:
             # The arguments will fit to the right of the prefix.
             indent = " " * term_len(usage_prefix)
             self.write(
-                wrap_text(
+                _wrap_usage(
                     args,
                     text_width,
                     initial_indent=usage_prefix,
@@ -194,7 +216,7 @@ class HelpFormatter:
             self.write("\n")
             indent = " " * (max(self.current_indent, term_len(prefix)) + 4)
             self.write(
-                wrap_text(
+                _wrap_usage(
                     args, text_width, initial_indent=indent, subsequent_indent=indent
                 )
             )
