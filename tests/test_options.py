@@ -1017,6 +1017,89 @@ def test_show_envvar_auto_prefix(runner):
     assert "TEST_ARG1" in result.output
 
 
+@pytest.mark.parametrize(
+    ("envvar", "expect"),
+    [
+        ("", None),
+        ([], None),
+        ([""], None),
+        (["WEATHER_UNITS", "UNITS"], "(env var: 'WEATHER_UNITS', 'UNITS')"),
+        ("UNITS", "(env var: 'UNITS')"),
+    ],
+)
+def test_show_envvar_error_hint(runner, envvar, expect):
+    """An invalid value names the env vars: empty string, empty list and a list
+    of only empty names show no hint; a list shows each name quoted."""
+
+    @click.command()
+    @click.option(
+        "--units",
+        type=click.Choice(["metric", "imperial"]),
+        envvar=envvar,
+        show_envvar=True,
+    )
+    def cmd(units):
+        pass
+
+    result = runner.invoke(cmd, ["--units", "bogus"])
+    assert result.exit_code == 2
+    assert "Invalid value for '--units'" in result.output
+
+    if expect is None:
+        assert "env var" not in result.output
+    else:
+        assert expect in result.output
+
+
+def test_show_envvar_error_hint_missing_list(runner):
+    """A required option with a two-name envvar list names both in the
+    missing-option error."""
+    cli = click.Command(
+        "cli",
+        params=[
+            click.Option(
+                ["--units"],
+                envvar=["WEATHER_UNITS", "UNITS"],
+                show_envvar=True,
+                required=True,
+            )
+        ],
+    )
+    result = runner.invoke(cli, env={"WEATHER_UNITS": None, "UNITS": None})
+    assert result.exit_code == 2
+    assert "Error: Missing option '--units' (env var: 'WEATHER_UNITS', 'UNITS')." in (
+        result.output
+    )
+
+
+@pytest.mark.parametrize(
+    ("envvar", "prefix", "expect"),
+    [
+        ("", None, None),
+        ([], None, None),
+        (["WEATHER_UNITS", "UNITS"], None, "[env var: WEATHER_UNITS, UNITS]"),
+        ("", "TEST", "TEST_UNITS"),
+        (None, "TEST", "TEST_UNITS"),
+    ],
+)
+def test_show_envvar_help_empty_or_list(runner, envvar, prefix, expect):
+    """Help for an empty string or empty list envvar shows no env var unless
+    an auto prefix applies, as with None; a list shows every name."""
+
+    @click.command()
+    @click.option("--units", envvar=envvar, show_envvar=True)
+    def cmd(units):
+        pass
+
+    result = runner.invoke(cmd, ["--help"], auto_envvar_prefix=prefix)
+    assert not result.exception
+
+    if expect is None:
+        assert "env var" not in result.output
+    else:
+        assert expect in result.output
+
+
 def test_show_envvar_auto_prefix_dash_in_command(runner):
     @click.group()
     def cli():
