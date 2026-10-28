@@ -19,6 +19,11 @@ Unreleased
   for options, so its value changes from `my_option` to `--my-option`. Click no
   longer reads it, and a subclass that overrides it gets a warning when the class
   is defined. {pr}`3877`
+- With `show_envvar`, an empty `envvar` string or list is shown like
+  `envvar=None`: error messages no longer show `(env var: '')`, and the help
+  screen no longer shows `[env var: ]`. The error hint for an `envvar` with
+  several names lists each name, quoted and separated by commas, as in
+  `(env var: 'WEATHER_UNITS', 'UNITS')`.
 
 ## Version 8.5.1
 

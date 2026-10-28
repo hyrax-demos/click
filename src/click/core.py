@@ -3420,10 +3420,23 @@ class Option(Parameter):
             value = value()
         return value
 
+    def _shown_envvar_names(self) -> tuple[str, ...]:
+        """The explicit :attr:`envvar` names to display, with empty names
+        dropped. An empty string, an empty list, or ``None`` gives ``()``.
+        """
+        if self.envvar is None:
+            return ()
+
+        if isinstance(self.envvar, str):
+            return (self.envvar,) if self.envvar else ()
+
+        return tuple(str(n) for n in self.envvar if n)
+
     def get_error_hint(self, ctx: Context | None) -> str:
         result = super().get_error_hint(ctx)
-        if self.show_envvar and self.envvar is not None:
-            result += f" (env var: '{self.envvar}')"
+        names = self._shown_envvar_names()
+        if self.show_envvar and names:
+            result += " (env var: " + ", ".join(f"'{n}'" for n in names) + ")"
         return result
 
     def _check_name_is_normalized(self, name: str, decls: cabc.Sequence[str]) -> None:
@@ -3615,21 +3628,18 @@ class Option(Parameter):
         extra: types.OptionHelpExtra = {}
 
         if self.show_envvar:
-            envvar = self.envvar
+            names = self._shown_envvar_names()
 
-            if envvar is None:
+            if not names:
                 if (
                     self.allow_from_autoenv
                     and ctx.auto_envvar_prefix is not None
                     and self.name
                 ):
-                    envvar = f"{ctx.auto_envvar_prefix}_{self.name.upper()}"
+                    names = (f"{ctx.auto_envvar_prefix}_{self.name.upper()}",)
 
-            if envvar is not None:
-                if isinstance(envvar, str):
-                    extra["envvars"] = (envvar,)
-                else:
-                    extra["envvars"] = tuple(str(d) for d in envvar)
+            if names:
+                extra["envvars"] = names
 
         # Temporarily enable resilient parsing to avoid type casting
         # failing for the default. Might be possible to extend this to
