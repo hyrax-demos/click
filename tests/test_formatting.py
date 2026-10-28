@@ -630,3 +630,56 @@ def test_command_write_usage_no_args(runner, command_kwargs, expected_usage_line
     cli = click.Command("cli", **command_kwargs)
     result = runner.invoke(cli, ["--help"])
     assert result.output.splitlines()[0] == expected_usage_line
+
+
+_TEN_OPTIONS = (
+    "--verbose",
+    "--quiet",
+    "--config-path",
+    "--output-dir",
+    "--max-retry-count",
+    "--timeout",
+    "--log-level",
+    "--dry-run",
+    "--no-color",
+    "--help",
+)
+
+
+@pytest.mark.parametrize(
+    ("prog", "expected"),
+    [
+        # Args fit to the right of the prefix: continuation lines align
+        # under the first argument.
+        pytest.param(
+            "cli",
+            "Usage: cli --verbose --quiet --config-path --output-dir\n"
+            "           --max-retry-count --timeout --log-level --dry-run\n"
+            "           --no-color --help\n",
+            id="args-beside-prefix",
+        ),
+        # Prog too long to share the line: args move to the next lines.
+        pytest.param(
+            "a-very-long-program-name-that-crowds-the-line",
+            "Usage: a-very-long-program-name-that-crowds-the-line\n"
+            "           --verbose --quiet --config-path --output-dir\n"
+            "           --max-retry-count --timeout --log-level --dry-run\n"
+            "           --no-color --help\n",
+            id="args-below-prefix",
+        ),
+    ],
+)
+def test_write_usage_does_not_split_option_names_at_hyphens(prog, expected):
+    """Ten long-form options rendered with ``HelpFormatter(width=65)`` land
+    a line break right inside ``--max-retry-count``; the usage line must
+    move the whole option to the next line instead of breaking it at a
+    hyphen.
+    """
+    f = click.HelpFormatter(width=65)
+    f.write_usage(prog, " ".join(_TEN_OPTIONS))
+    rendered = f.getvalue()
+    # Compare with trailing spaces stripped; the prefix line's trailing
+    # separator is not what this test is about.
+    assert [line.rstrip() for line in rendered.splitlines()] == expected.splitlines()
+    tokens = rendered.split()
+    assert [t for t in tokens if t.startswith("-")] == list(_TEN_OPTIONS)
